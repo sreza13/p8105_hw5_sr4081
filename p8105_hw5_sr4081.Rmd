@@ -1,0 +1,57 @@
+---
+title: "p8105_hw5_sr4081"
+author: "Samiha Reza"
+date: "2024-11-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rvest)
+```
+
+
+
+## Problem 2
+
+``` {r function()}
+n <- 30
+sigma <- 5
+mu_values <- 0:6
+n_datasets <- 5000
+alpha <-0.05
+
+set.seed(10)
+
+power_results <- vector ("list", length(mu_values))
+
+for (i in seq_along(mu_values)) {
+  mu <- mu_values[i]
+
+results <- replicate(n_datasets, {
+    x = rnorm(n, mean = mu, sd = sigma)
+    t_test <- t.test(x, mu = 0)
+
+    broom::tidy(t_test)[c("estimate", "p.value")]
+}, simplify = FALSE)
+
+results_df <- do.call(rbind, results)
+colnames(results_df) <- c("mu_hat", "p_value")
+
+
+
+power <- mean(results_df$p_value < alpha)
+cat("Estimated Power:", power, "\n")
+
+power_results[[i]] <- data.frame(mu = mu, power = power)
+}
+
+power_results_df <- do.call(rbind, power_results)
+
+head(power_results_df)
+```
+
+
+
+## Problem 3
