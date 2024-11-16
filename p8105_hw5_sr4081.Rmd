@@ -13,10 +13,38 @@ library(rvest)
 library(ggplot2)
 ```
 
+## Problem 1
+``` {r birth}
+birth_sim = function(n){
+  birthday = sample(1:365, size = n, replace = TRUE)
+  
+  duplicate = length(unique(birthday)) < n 
+  
+  return(duplicate)
+  
+}
 
+birth_sim(50)
+```
+
+```{r}
+sim_res = 
+  expand_grid(
+    n = 2:50,
+    iter = 1:1000
+  ) |>
+  mutate(res = map_lgl(n, birth_sim)) |>
+  group_by(n) |>
+  summarize(prob = mean(res))
+
+sim_res |>
+  ggplot(aes(x= n, y = prob)) +
+  geom_line()
+```
 
 ## Problem 2
 
+Below is the function to create samples of 30 from 5000 random datasets. Then I found the means, and did a one-sample t-test for each, comparing the mean to the null hypothesis mu = 0, and found the power of each one. 
 ``` {r function()}
 n <- 30
 sigma <- 5
@@ -116,6 +144,45 @@ homicide_summary <- homicide_data %>%
     unsolved_homicides = sum(unsolved),
     .groups = "drop"
   )
+
+print(homicide_summary)
 ```
 The dataset has `r nrow(homicide_data)` observations and `r ncol(homicide_data)` variables. The variables include `r colnames(homicide_data)`.
 
+```{r proptest}
+baltimore_data <- homicide_data %>%
+  filter(city_state == "Baltimore, MD")
+
+unsolved_count <- sum(baltimore_data$disposition %in% c("Closed without arrest", "Open/No arrest"))
+total_count <- nrow(baltimore_data)
+
+
+prop_test_result <- prop.test(unsolved_count, total_count)
+
+
+tidy_result <- broom::tidy(prop_test_result)
+
+tidy_result %>%
+  select(estimate, conf.low, conf.high)
+
+
+results <- homicide_summary %>%
+  mutate(
+    test_result = purrr::map2(unsolved_homicides, total_homicide, ~prop.test(.x, .y)),
+    tidy_result = purrr::map(test_result, broom::tidy)
+  ) %>%
+  unnest(tidy_result) %>%
+  select(city_state, estimate, conf.low, conf.high)
+
+ggplot(results, aes(x = reorder(city_state, estimate), y = estimate)) +
+  geom_point(size = 3, color = "blue") +  
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +  
+  labs(
+    title = "Proportion of Unsolved Homicides by City",
+    x = "City",
+    y = "Proportion of Unsolved Homicides"
+  ) +
+  coord_flip() +  
+  theme_minimal() +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better fit
+```
