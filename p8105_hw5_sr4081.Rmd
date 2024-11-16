@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(rvest)
+library(ggplot2)
 ```
 
 
@@ -31,27 +32,89 @@ for (i in seq_along(mu_values)) {
 
 results <- replicate(n_datasets, {
     x = rnorm(n, mean = mu, sd = sigma)
-    t_test <- t.test(x, mu = 0)
+    t_test <- t.test(x, mu=0)
 
-    broom::tidy(t_test)[c("estimate", "p.value")]
+    tidy_t_test <- broom::tidy(t_test)
+    tidy_t_test$mu <- mu
+    tidy_t_test[c("estimate", "p.value", "mu")]
 }, simplify = FALSE)
 
 results_df <- do.call(rbind, results)
-colnames(results_df) <- c("mu_hat", "p_value")
-
+colnames(results_df) <- c("mu_hat", "p_value", "mu")
 
 
 power <- mean(results_df$p_value < alpha)
-cat("Estimated Power:", power, "\n")
 
-power_results[[i]] <- data.frame(mu = mu, power = power)
+
+avg_mu_hat <- mean(results_df$mu_hat)
+avg_mu_hat_rejected <- mean(results_df$mu_hat[results_df$p_value < alpha])
+
+
+power_results[[i]] <- data.frame(mu=mu, 
+                                 power=power,
+                                 avg_mu_hat=avg_mu_hat,
+                                 avg_mu_hat_rejected=avg_mu_hat_rejected)
+
 }
 
-power_results_df <- do.call(rbind, power_results)
+final_results_df <- do.call(rbind, power_results)
 
-head(power_results_df)
+
+head(final_results_df)
 ```
+``` {r plot1}
 
+ggplot(final_results_df, aes(x = mu, y = power)) + 
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(
+    title = "Power vs Effect Size", 
+    x = "True mean",
+    y = "Power"
+  ) + 
+  theme_minimal()
 
+```
+As the true value of mean increases, the power increases as well. This indicates how effect size and power are directly proportional. 
+
+``` {r plot2}
+
+ggplot(final_results_df, aes (x = mu, y = avg_mu_hat)) + 
+  geom_line(aes(y = avg_mu_hat), color = "blue") +
+  geom_point(aes(y=avg_mu_hat), color = "blue") +
+  
+  geom_line(aes(y=avg_mu_hat_rejected), color = "red") +
+  geom_point(aes(y=avg_mu_hat_rejected), color = "red") +
+  labs(
+    title = "Average estimate of mean vs True mean", 
+    x = "True mean",
+    y = "Average Estimate of Mean"
+  ) + 
+  theme_minimal()
+
+```
+The blue line refers to the average estimate of mean for all generated p-values; the estimates are close to the true mean. The red line refers to the average estimate of mean for p-values that rejected the null hypothesis. The sample average for the rejected null p-values is not approximately equal when the true mean is smaller because of the affect on effect size and power. 
 
 ## Problem 3
+
+``` {r data }
+url <- "https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv"
+download.file(url, destfile = "homicide-data.csv")
+
+homicide_data <- read.csv(url) %>%
+    janitor::clean_names() %>%
+    mutate(city_state = paste(city, state, sep = ", ")
+)
+
+homicide_summary <- homicide_data %>%
+  mutate(unsolved = ifelse(disposition %in% c("Closed without arrest", "Open/No arrest"), 1, 0)
+         ) %>%
+  group_by(city_state) %>%
+  summarise(
+    total_homicide = n(),
+    unsolved_homicides = sum(unsolved),
+    .groups = "drop"
+  )
+```
+The dataset has `r nrow(homicide_data)` observations and `r ncol(homicide_data)` variables. The variables include `r colnames(homicide_data)`.
+
