@@ -104,6 +104,7 @@ ggplot(final_results_df, aes(x = mu, y = power)) +
   theme_minimal()
 
 ```
+
 As the true value of mean increases, the power increases as well. This indicates how effect size and power are directly proportional. 
 
 ``` {r plot2}
@@ -122,6 +123,7 @@ ggplot(final_results_df, aes (x = mu, y = avg_mu_hat)) +
   theme_minimal()
 
 ```
+
 The blue line refers to the average estimate of mean for all generated p-values; the estimates are close to the true mean. The red line refers to the average estimate of mean for p-values that rejected the null hypothesis. The sample average for the rejected null p-values is not approximately equal when the true mean is smaller because of the affect on effect size and power. 
 
 ## Problem 3
@@ -183,6 +185,5 @@ ggplot(results, aes(x = reorder(city_state, estimate), y = estimate)) +
     y = "Proportion of Unsolved Homicides"
   ) +
   coord_flip() +  
-  theme_minimal() +
-  theme(axis.text.y = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better fit
+  theme_minimal()
 ```
